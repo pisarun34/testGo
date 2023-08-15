@@ -17,9 +17,9 @@ func init() {
 
 func main() {
 
-	db := mysql.Initialize() // Initialize ฐานข้อมูล
-	redis := redis.NewRedisClient()
-	defer redis.CloseRedis()
-	api.StartAPI(redis, db)
+	db := mysql.Initialize()        // Initialize Database
+	redis := redis.NewRedisClient() // Initialize redis
+	defer redis.CloseRedis()        // close redis connection
+	api.StartAPI(redis, db)         // StartApi รับค่า redis และ db เพื่อเริ่มต้นระบบ API
 
 }

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"TESTGO/pkg/database/models"
 	"fmt"
 
 	"gorm.io/driver/mysql"
@@ -12,7 +13,6 @@ func Initialize() *gorm.DB {
 	// โหลด config
 	fmt.Println("InitializeMySQL")
 	config := NewConfig()
-	fmt.Println("config: ", config)
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", config.User, config.Pass, config.Host, config.Name)
 	//dsn := "user:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -20,7 +20,7 @@ func Initialize() *gorm.DB {
 		fmt.Println("err: ", err)
 		panic("Failed to connect to database")
 	}
-	db.AutoMigrate(&User{}, &SeeksterUser{})
+	db.AutoMigrate(&models.Price{}, &models.Packages{}, &models.SubscriptionPackages{})
 	// สร้างตารางโดยอัตโนมัติ
 	return db
 }

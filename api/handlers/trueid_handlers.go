@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"TESTGO/models"
+	"TESTGO/pkg/api/errors"
 	"TESTGO/pkg/external"
 	"TESTGO/pkg/external/trueidpartner"
 	"encoding/json"
@@ -15,24 +15,19 @@ func NewTrueIDClient() external.TrueIDSubscripberAPI {
 	return trueidpartner.NewClient()
 }
 
-type LoginInput struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
 func TrueIDSubscripber(client external.TrueIDSubscripberAPI, c *gin.Context, db *gorm.DB) {
 	if ssoidValue, exists := c.Get("ssoid"); exists {
 		ssoid, ok := ssoidValue.(string)
 		if !ok {
 			fmt.Println("ssoid is not string")
-			c.JSON(models.ErrValidationInputSSOID.Status, models.ErrValidationInputSSOID)
+			c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
 		}
 		subscription, resp, err := client.GetSubscribers(ssoid)
 		if err != nil {
 			var resultMap map[string]interface{}
 			err := json.Unmarshal([]byte(resp.String()), &resultMap)
 			if err != nil {
-				c.JSON(models.ErrParseJSON.Status, models.ErrParseJSON)
+				c.JSON(errors.ErrParseJSON.Status, errors.ErrParseJSON)
 				return
 			}
 			c.JSON(resp.StatusCode(), resultMap)
@@ -40,6 +35,6 @@ func TrueIDSubscripber(client external.TrueIDSubscripberAPI, c *gin.Context, db 
 		}
 		c.JSON(resp.StatusCode(), subscription)
 	} else {
-		c.JSON(models.ErrValidationInputSSOID.Status, models.ErrValidationInputSSOID)
+		c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
 	}
 }

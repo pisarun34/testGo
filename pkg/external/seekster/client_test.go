@@ -1,7 +1,7 @@
 package seekster
 
 import (
-	"TESTGO/pkg/database/mysql"
+	"TESTGO/pkg/database/models"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -172,7 +172,7 @@ func TestSignInByPhone(t *testing.T) {
 	tests := []struct {
 		name            string
 		mockFunc        func(*MockRestyRequest)
-		input           mysql.User
+		input           models.User
 		expectErr       bool
 		expectRespErr   bool
 		expectResp      *SignResponse
@@ -199,8 +199,8 @@ func TestSignInByPhone(t *testing.T) {
 				m.On("SetBody", mock.Anything).Return(mockRequest)
 				m.On("Post", mock.Anything).Return(resp, nil)
 			},
-			input: mysql.User{
-				SeeksterUser: mysql.SeeksterUser{
+			input: models.User{
+				SeeksterUser: models.SeeksterUser{
 					PhoneNumber: "1234567890",
 					Password:    "password",
 					UUID:        "testUUID",
@@ -220,8 +220,8 @@ func TestSignInByPhone(t *testing.T) {
 				m.On("SetBody", mock.Anything).Return(mockRequest)
 				m.On("Post", mock.Anything).Return(resp, mockError)
 			},
-			input: mysql.User{
-				SeeksterUser: mysql.SeeksterUser{
+			input: models.User{
+				SeeksterUser: models.SeeksterUser{
 					PhoneNumber: "1234567890",
 					Password:    "password",
 					UUID:        "testUUID",
@@ -252,8 +252,8 @@ func TestSignInByPhone(t *testing.T) {
 				m.On("SetBody", mock.Anything).Return(mockRequest)
 				m.On("Post", mock.Anything).Return(resp, nil)
 			},
-			input: mysql.User{
-				SeeksterUser: mysql.SeeksterUser{
+			input: models.User{
+				SeeksterUser: models.SeeksterUser{
 					PhoneNumber: "1234567890",
 					Password:    "password",
 					UUID:        "testUUID",

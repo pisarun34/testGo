@@ -1,19 +1,21 @@
 package mysql
 
 import (
-	"TESTGO/models"
+	"TESTGO/pkg/database/models"
+	"TESTGO/pkg/entities"
 	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
 )
 
-func InsertSeeksterUser(db *gorm.DB, input models.InsertSeeksterUserInput) (*User, error) {
-	var user User
+func InsertSeeksterUser(db *gorm.DB, input entities.InsertSeeksterUserInput) (*models.User, error) {
+	var user models.User
+	// Check if User already exists
 	if err := db.Where("ssoid = ?", input.SSOID).First(&user).Error; err != nil {
 		// If the user does not exist, create a new User and SeeksterUser
 		if err == gorm.ErrRecordNotFound {
-			newUser := User{
+			newUser := models.User{
 				SSOID: input.SSOID,
 			}
 
@@ -23,7 +25,7 @@ func InsertSeeksterUser(db *gorm.DB, input models.InsertSeeksterUserInput) (*Use
 			}
 
 			// Create a new SeeksterUser with the given input
-			seeksterUser := SeeksterUser{
+			seeksterUser := models.SeeksterUser{
 				PhoneNumber: input.PhoneNumber,
 				Password:    input.Password,
 				UUID:        input.UUID,
@@ -34,6 +36,7 @@ func InsertSeeksterUser(db *gorm.DB, input models.InsertSeeksterUserInput) (*Use
 			if err := db.Create(&seeksterUser).Error; err != nil {
 				return nil, err
 			}
+			// Set SeeksterUser to the newly created User
 			newUser.SeeksterUser = seeksterUser
 			return &newUser, nil
 		} else {
@@ -42,12 +45,12 @@ func InsertSeeksterUser(db *gorm.DB, input models.InsertSeeksterUserInput) (*Use
 		}
 	} else {
 		// If the user exists, check if SeeksterUser already exists
-		var seeksterUser SeeksterUser
+		var seeksterUser models.SeeksterUser
 		if err := db.Where("user_id = ?", user.ID).First(&seeksterUser).Error; err != nil {
 			fmt.Println(err)
 			// If SeeksterUser does not exist, create a new SeeksterUser
 			if err == gorm.ErrRecordNotFound {
-				newSeeksterUser := SeeksterUser{
+				newSeeksterUser := models.SeeksterUser{
 					PhoneNumber: input.PhoneNumber,
 					Password:    input.Password,
 					UUID:        input.UUID,
@@ -58,6 +61,7 @@ func InsertSeeksterUser(db *gorm.DB, input models.InsertSeeksterUserInput) (*Use
 				if err := db.Create(&newSeeksterUser).Error; err != nil {
 					return nil, err
 				}
+				// Set SeeksterUser to the existing User
 				user.SeeksterUser = newSeeksterUser
 				return &user, nil
 			} else {

@@ -1,7 +1,7 @@
 package external
 
 import (
-	"TESTGO/pkg/database/mysql"
+	"TESTGO/pkg/database/models"
 	"TESTGO/pkg/external/seekster"
 	"TESTGO/pkg/external/trueidpartner"
 
@@ -10,8 +10,8 @@ import (
 
 // SeeksterAPI สร้าง interface สำหรับเรียกใช้งาน TrueID API
 type SeeksterAPI interface {
-	SignInByPhone(seeksterUser mysql.User) (*seekster.SignResponse, *resty.Response, error)
-	SignUp(seeksterUser mysql.User) (*seekster.SignUpResponse, *resty.Response, error)
+	SignInByPhone(seeksterUser models.User) (*seekster.SignResponse, *resty.Response, error)
+	SignUp(seeksterUser models.User) (*seekster.SignUpResponse, *resty.Response, error)
 }
 
 // TrueIDSubscripberAPI สร้าง interface สำหรับเรียกใช้งาน TrueID API

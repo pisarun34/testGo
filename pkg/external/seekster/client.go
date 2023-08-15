@@ -1,7 +1,7 @@
 package seekster
 
 import (
-	"TESTGO/pkg/database/mysql"
+	"TESTGO/pkg/database/models"
 	"errors"
 	"fmt"
 	"os"
@@ -76,7 +76,7 @@ func NewClient() *Client {
 }
 
 // SignInByPhone คือฟังก์ชันสำหรับเรียกใช้งาน SignInByPhone API ของ Seekster
-func (c *Client) SignInByPhone(seeksterUser mysql.User) (*SignResponse, *resty.Response, error) {
+func (c *Client) SignInByPhone(seeksterUser models.User) (*SignResponse, *resty.Response, error) {
 
 	url := fmt.Sprintf("%s/sign_in_with_phone_number_password", c.BaseURL)
 	data := SignInRequest{
@@ -115,7 +115,7 @@ func (c *Client) SignInByPhone(seeksterUser mysql.User) (*SignResponse, *resty.R
 	return &signInResponse, resp, nil
 }
 
-func (c *Client) SignUp(seeksterUser mysql.User) (*SignUpResponse, *resty.Response, error) {
+func (c *Client) SignUp(seeksterUser models.User) (*SignUpResponse, *resty.Response, error) {
 
 	url := fmt.Sprintf("%s/register", c.BaseURL)
 

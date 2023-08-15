@@ -9,6 +9,7 @@ import (
 
 // StartAPI จะเริ่มต้นระบบ API โดยรับค่า db เพื่อเชื่อมต่อฐานข้อมูล
 func StartAPI(redis database.RedisClientInterface, db *gorm.DB) {
+	// สร้าง router ขึ้นมา
 	r := gin.Default()
 	SetupRouter(r, redis, db)
 	r.Run(":8080")

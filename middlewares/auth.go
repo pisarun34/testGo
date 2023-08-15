@@ -37,6 +37,7 @@ func ConvertJWKToRSAPublicKey(n, e string) (*rsa.PublicKey, error) {
 	return pubKey, nil
 }
 
+// AuthTrueID is a function that check token from TrueID and extract ssoid from token to context
 func AuthTrueID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.Request.Header.Get("Authorization")
@@ -44,6 +45,7 @@ func AuthTrueID() gin.HandlerFunc {
 
 		jwks, err := trueid_jwk.FetchJWKSFromURL() // ดึง JWK จาก URL
 		if err != nil {
+			// if failed to fetch JWKs return error
 			c.JSON(http.StatusUnauthorized, "Failed to fetch JWKs")
 			c.Abort()
 			return
@@ -54,6 +56,7 @@ func AuthTrueID() gin.HandlerFunc {
 		//... ตรวจสอบการถอดแกะข้อมูลจาก token และตรวจสอบกับ JWKs
 
 		if err != nil {
+			// if token is not valid return error
 			c.JSON(http.StatusUnauthorized, "Unauthorized")
 			c.Abort()
 			return
@@ -77,11 +80,12 @@ func AuthTrueID() gin.HandlerFunc {
 			err = tk.Claims(jwk, &customClaims)
 			if err == nil {
 				claimsValidated = true
+				// set ssoid to context
 				c.Set("ssoid", customClaims.SUB)
 				break
 			}
 		}
-
+		// if token is not valid return error
 		if !claimsValidated {
 			c.Abort()
 			return
