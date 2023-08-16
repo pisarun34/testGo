@@ -13,5 +13,6 @@ type SubscriptionPackages struct {
 	DisplayQuantity    string `gorm:"type:varchar(255)"`
 	PriceID            uint   `gorm:"foreignKey:PriceRef"`
 	PackageID          uint   `gorm:"foreignKey:PackagesRef"`
+	Status             string `gorm:"type:ENUM('inactive', 'active', 'suspended');default:'Active'"`
 	Price              Price
 }

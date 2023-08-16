@@ -24,16 +24,22 @@ func SetupRouter(r *gin.Engine, redis database.RedisClientInterface, db *gorm.DB
 func setupSeeksterRoutes(baseGroup *gin.RouterGroup, redis database.RedisClientInterface, db *gorm.DB) {
 	seeksterClientInstance := handlers.NewSeeksterClient()
 	seeksterGroup := baseGroup.Group("/seekster")
-	seeksterGroup.Use()
+
+	seeksterGroup.POST("/signin", func(c *gin.Context) {
+		handlers.SeeksterSignin(seeksterClientInstance, c, redis, db)
+	})
+	seeksterGroup.POST("/signup", func(c *gin.Context) {
+		handlers.SeeksterSignup(seeksterClientInstance, c, redis, db)
+	})
+	seeksterGroup.POST("/insertuser", func(c *gin.Context) {
+		handlers.InsertSeeksterUser(seeksterClientInstance, c, db)
+	})
+
+	seeksterGroup.Use(middlewares.AuthSeekster(seeksterClientInstance, redis, db))
 	{
-		seeksterGroup.POST("/signin", func(c *gin.Context) {
-			handlers.SeeksterSignin(seeksterClientInstance, c, redis, db)
-		})
-		seeksterGroup.POST("/signup", func(c *gin.Context) {
-			handlers.SeeksterSignup(seeksterClientInstance, c, redis, db)
-		})
-		seeksterGroup.POST("/insertuser", func(c *gin.Context) {
-			handlers.InsertSeeksterUser(seeksterClientInstance, c, db)
+		// Protected routes
+		seeksterGroup.GET("/services", func(c *gin.Context) {
+			handlers.GetServiceInfo(seeksterClientInstance, c, redis, db)
 		})
 	}
 }

@@ -108,7 +108,6 @@ func (c *Client) SignInByPhone(seeksterUser models.User) (*SignResponse, *resty.
 	}
 	if resp.IsError() {
 		errMsg := fmt.Sprintf("API request failed: %s - %s", resp.Status(), resp.String())
-		fmt.Println(errMsg)
 		return nil, resp, errors.New(errMsg)
 	}
 

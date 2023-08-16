@@ -14,6 +14,7 @@ import (
 	"TESTGO/pkg/utils"
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"time"
@@ -23,6 +24,15 @@ import (
 	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
 )
+
+type MyError struct {
+	Message string
+	Code    int
+}
+
+func (e *MyError) Error() string {
+	return e.Message
+}
 
 // NewSeeksterClient is a function that return SeeksterAPI interface
 func NewSeeksterClient() external.SeeksterAPI {
@@ -185,6 +195,50 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 
 }
 
+func SignInSeeksterAuto(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) (*resty.Response, error) {
+	// check ssoid is in context
+	if ssoidValue, exists := c.Get("ssoid"); exists {
+		ssoid, ok := ssoidValue.(string)
+		if !ok {
+			c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
+			return nil, stderrors.New("ssoid is not string")
+		}
+		// check seekster token is in redis
+		_, err := redis.GetSeeksterToken(context.Background(), ssoid)
+		// if seekster token is not in redis call seekster api and set seekster token to redis if token is in redis return success
+		if err != nil {
+			// if error is redis: nil call seekster api and set seekster token to redis
+			if err.Error() == "redis: nil" {
+				var seeksterUser models.User
+				// get seekster user from db
+				if err := db.Where("SSOID = ?", ssoid).
+					Preload("SeeksterUser").
+					First(&seeksterUser).Error; err != nil {
+					return nil, err
+				}
+				// call seekster SignIn api
+				user, resp, err := client.SignInByPhone(seeksterUser)
+				if err != nil {
+					return resp, err
+				}
+				// set seekster token to redis
+				redis.SetSeeksterToken(context.Background(), ssoid, user.AccessToken)
+				//c.JSON(resp.StatusCode(), user)
+				return nil, nil
+			} else {
+				// Redis error
+				return nil, err
+			}
+		} else {
+			// seekster token is in redis can call Seekster API
+			return nil, err
+		}
+	} else {
+		// ssoid is not in context
+		return nil, stderrors.New("ssoid is not in context")
+	}
+
+}
 func InsertSeeksterUser(client external.SeeksterAPI, c *gin.Context, db *gorm.DB) {
 	ctx := context.Background()
 	pong, err := redis.RedisClient.Ping(ctx).Result()
@@ -208,4 +262,8 @@ func InsertSeeksterUser(client external.SeeksterAPI, c *gin.Context, db *gorm.DB
 		}
 		c.JSON(200, "OK")
 	}
+}
+
+func GetServiceInfo(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
+	c.JSON(200, gin.H{"message": "test"})
 }

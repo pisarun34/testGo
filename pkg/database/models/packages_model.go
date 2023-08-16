@@ -1,6 +1,10 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Packages struct {
 	gorm.Model
@@ -16,5 +20,8 @@ type Packages struct {
 	VatDescription       string                 `gorm:"type:varchar(255)"`
 	Type                 string                 `gorm:"type:varchar(255)"`
 	Terms                string                 `gorm:"type:text"`
+	Status               string                 `gorm:"type:ENUM('inactive', 'active', 'suspended');default:'Active'"`
+	StartDate            time.Time              `gorm:"type:datetime(3)"`
+	EndDate              time.Time              `gorm:"type:datetime(3)"`
 	SubscriptionPackages []SubscriptionPackages `gorm:"foreignKey:PackageID"`
 }

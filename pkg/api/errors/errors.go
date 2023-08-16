@@ -28,6 +28,7 @@ var (
 	ErrInternalServer       = NewAppError(500, 10222, "Internal server error")
 	ErrBadRequest           = NewAppError(400, 10333, "Bad request")
 	ErrUnauthorized         = NewAppError(401, 10444, "Unauthorized")
+	ErrSeeksterUnauthorize  = NewAppError(401, 10445, "Seekster unauthorize")
 	ErrSeeksterUserExist    = NewAppError(400, 10555, "Seekster user already exists")
 	ErrRedis                = NewAppError(500, 10666, "Internal server error")
 	ErrParseJSON            = NewAppError(500, 10777, "Internal server error")
