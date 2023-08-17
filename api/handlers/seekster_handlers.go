@@ -68,7 +68,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 		ssoid, ok := ssoidValue.(string)
 		if !ok {
 			fmt.Println("ssoid is not string")
-			c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
+			c.Error(errors.ErrValidationInputSSOID)
 		}
 		// check seekster token is in redis
 		_, err := redis.GetSeeksterToken(context.Background(), ssoid)
@@ -81,7 +81,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 				if err := db.Where("SSOID = ?", ssoid).
 					Preload("SeeksterUser").
 					First(&seeksterUser).Error; err != nil {
-					c.JSON(errors.ErrDatabase.Status, errors.ErrDatabase)
+					c.Error(errors.ErrDatabase)
 					return
 				}
 				// call seekster SignIn api
@@ -90,10 +90,11 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 					// convert response body to map[string]interface{}
 					resultMap, err := ResponseBodyToStruct(resp)
 					if err != nil {
-						c.JSON(errors.ErrParseJSON.Status, errors.ErrParseJSON)
+						c.Error(errors.ErrParseJSON)
 						return
 					}
-					c.JSON(resp.StatusCode(), resultMap)
+					c.Error(errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap))
+					//c.JSON(resp.StatusCode(), resultMap)
 					return
 				}
 				// set seekster token to redis
@@ -103,7 +104,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 				return
 			} else {
 				// Redis error
-				c.JSON(errors.ErrRedis.Status, errors.ErrRedis)
+				c.Error(errors.ErrRedis)
 				return
 			}
 		} else {
@@ -113,7 +114,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 		}
 	} else {
 		// ssoid is not in context
-		c.JSON(errors.ErrExtractJWTTrueID.Status, errors.ErrExtractJWTTrueID)
+		c.Error(errors.ErrExtractJWTTrueID)
 		return
 	}
 

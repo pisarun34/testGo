@@ -4,21 +4,21 @@ import (
 	"fmt"
 )
 
-type AppError struct {
+type APIError struct {
 	Status  int    `json:"-"`
 	Code    int    `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
-func NewAppError(status int, code int, msg string) *AppError {
-	return &AppError{
+func NewAppError(status int, code int, msg string) *APIError {
+	return &APIError{
 		Status:  status,
 		Code:    code,
 		Message: msg,
 	}
 }
 
-func (e *AppError) Error() string {
+func (e *APIError) Error() string {
 	return fmt.Sprintf("Status: %d, Code: %d, Message: %s", e.Status, e.Code, e.Message)
 }
 

@@ -13,7 +13,7 @@ import (
 func SetupRouter(r *gin.Engine, redis database.RedisClientInterface, db *gorm.DB) {
 	baseGroup := r.Group("/")
 	// use middleware to extract ssoid from jwt to context
-	baseGroup.Use(middlewares.AuthTrueID())
+	baseGroup.Use(middlewares.AuthTrueID(), middlewares.ErrorHandler(), middlewares.Logs())
 	// setup seekster and TrueID routes
 	setupSeeksterRoutes(baseGroup, redis, db)
 	setupTrueIDRoutes(baseGroup, redis, db)
