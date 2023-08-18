@@ -7,7 +7,6 @@ import (
 	"TESTGO/pkg/database"
 	"TESTGO/pkg/database/models"
 	"TESTGO/pkg/database/mysql"
-	"TESTGO/pkg/database/redis"
 	"TESTGO/pkg/entities"
 	"TESTGO/pkg/external"
 	"TESTGO/pkg/external/seekster"
@@ -17,7 +16,8 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
-	"time"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -69,6 +69,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 		if !ok {
 			fmt.Println("ssoid is not string")
 			c.Error(errors.ErrValidationInputSSOID)
+			return
 		}
 		// check seekster token is in redis
 		_, err := redis.GetSeeksterToken(context.Background(), ssoid)
@@ -100,7 +101,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 				// set seekster token to redis
 				redis.SetSeeksterToken(context.Background(), ssoid, user.AccessToken)
 				//c.JSON(resp.StatusCode(), user)
-				c.JSON(200, gin.H{"code": 10001, "message": seeksterUser})
+				c.JSON(http.StatusOK, gin.H{"code": 10001, "message": seeksterUser})
 				return
 			} else {
 				// Redis error
@@ -109,7 +110,7 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 			}
 		} else {
 			// seekster token is in redis can call Seekster API
-			c.JSON(200, gin.H{"code": 10001, "message": "Success"})
+			c.JSON(http.StatusOK, gin.H{"code": 10001, "message": "Success"})
 			return
 		}
 	} else {
@@ -125,17 +126,17 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 	// Bind input
 	var input requests.SignUpInput
 	if err := c.BindJSON(&input); err != nil {
-		c.JSON(errors.ErrBadRequest.Status, errors.ErrBadRequest)
+		c.Error(errors.ErrBadRequest)
 		return
 	}
 	// Validate input
 	if err := config.Validate.Struct(&input); err != nil {
 		if _, ok := err.(validator.ValidationErrors); ok {
 			errorMessages := handleValidationErrors(err, &config.Translator)
-			c.JSON(400, gin.H{"error": errorMessages})
+			c.Error(errors.NewAppError(http.StatusBadRequest, errors.ErrValidationInput.Code, strings.Join(errorMessages, " , ")))
 			return
 		} else {
-			c.JSON(errors.ErrValidationInput.Status, errors.ErrValidationInput)
+			c.Error(errors.ErrValidationInput)
 			return
 		}
 	}
@@ -143,7 +144,8 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 	if ssoidValue, exists := c.Get("ssoid"); exists {
 		ssoid, ok := ssoidValue.(string)
 		if !ok {
-			c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
+			c.Error(errors.ErrValidationInputSSOID)
+			return
 		}
 		// create seekster user input
 		user := entities.InsertSeeksterUserInput{
@@ -154,7 +156,7 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 		}
 		// Validate input
 		if err := config.Validate.Struct(&user); err != nil {
-			c.JSON(errors.ErrValidationModel.Status, errors.ErrValidationModel)
+			c.Error(errors.ErrValidationModel)
 			return
 		}
 		// Insert DB SeeksterUser and User if exist return error
@@ -162,9 +164,9 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 		if err != nil {
 			// if error is not SeeksterUser already exists return error
 			if err.Error() == "SeeksterUser already exists" {
-				c.JSON(errors.ErrSeeksterUserExist.Status, errors.ErrSeeksterUserExist)
+				c.Error(errors.ErrSeeksterUserExist)
 			} else {
-				c.JSON(errors.ErrInternalServer.Status, errors.ErrInternalServer)
+				c.Error(errors.ErrInternalServer)
 			}
 			return
 		}
@@ -174,23 +176,24 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 			// convert response body to map[string]interface{}
 			resultMap, err := ResponseBodyToStruct(resp)
 			if err != nil {
-				c.JSON(errors.ErrParseJSON.Status, errors.ErrParseJSON)
+				c.Error(errors.ErrParseJSON)
 				return
 			}
-			c.JSON(resp.StatusCode(), resultMap)
+			c.Error(errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap))
 			return
 		}
 		// set seekster token to redis
 		err = redis.SetSeeksterToken(context.Background(), ssoid, signUpUser.AccessToken)
 		if err != nil {
 			// ทำการ handle error
-			c.JSON(errors.ErrRedis.Code, errors.ErrRedis)
+			c.Error(errors.ErrRedis)
 			return
 		}
 		// return SignUpResponse
 		c.JSON(200, signUpUser)
+		return
 	} else {
-		c.JSON(errors.ErrExtractJWTTrueID.Status, errors.ErrExtractJWTTrueID)
+		c.Error(errors.ErrExtractJWTTrueID)
 		return
 	}
 
@@ -201,7 +204,6 @@ func SignInSeeksterAuto(client external.SeeksterAPI, c *gin.Context, redis datab
 	if ssoidValue, exists := c.Get("ssoid"); exists {
 		ssoid, ok := ssoidValue.(string)
 		if !ok {
-			c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
 			return nil, stderrors.New("ssoid is not string")
 		}
 		// check seekster token is in redis
@@ -241,30 +243,9 @@ func SignInSeeksterAuto(client external.SeeksterAPI, c *gin.Context, redis datab
 
 }
 func InsertSeeksterUser(client external.SeeksterAPI, c *gin.Context, db *gorm.DB) {
-	ctx := context.Background()
-	pong, err := redis.RedisClient.Ping(ctx).Result()
-	if err != nil {
-		fmt.Println("Failed to connect to Redis:", err)
-	} else {
-		fmt.Println("Connected to Redis. Response:", pong)
-	}
-	if ssoidValue, exists := c.Get("ssoid"); exists {
-		ssoid, ok := ssoidValue.(string)
-		fmt.Println(ssoid)
-		fmt.Println(redis.SeeksterTokenNamespace)
-		if !ok {
-			c.JSON(500, gin.H{"error": "internal error"})
-		}
-		err := redis.RedisClient.Set(context.TODO(), fmt.Sprintf("%s:%s", redis.SeeksterTokenNamespace, ssoid), "signUpUser.AccessToken", 24*7*time.Hour).Err()
-		if err != nil {
-			// ทำการ handle error
-			c.JSON(errors.ErrRedis.Code, errors.ErrRedis)
-			return
-		}
-		c.JSON(200, "OK")
-	}
+
 }
 
 func GetServiceInfo(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
-	c.JSON(200, gin.H{"message": "test"})
+	c.JSON(http.StatusOK, gin.H{"message": "test"})
 }

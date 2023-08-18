@@ -1,15 +1,9 @@
 package middlewares
 
 import (
-	"TESTGO/api/handlers"
-	"TESTGO/pkg/api/errors"
-	"TESTGO/pkg/database"
-	"TESTGO/pkg/external"
 	"TESTGO/pkg/external/trueid_jwk"
-	"context"
 	"crypto/rsa"
 	"encoding/base64"
-	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -17,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
-	"gorm.io/gorm"
 )
 
 type CustomClaims struct {
@@ -102,44 +95,44 @@ func AuthTrueID() gin.HandlerFunc {
 	}
 }
 
-func AuthSeekster(client external.SeeksterAPI, redis database.RedisClientInterface, db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		fmt.Println("AuthSeekster")
-		if ssoidValue, exists := c.Get("ssoid"); exists {
-			ssoid, ok := ssoidValue.(string)
-			if !ok {
-				c.JSON(errors.ErrValidationInputSSOID.Status, errors.ErrValidationInputSSOID)
-				c.Abort()
-				return
-			}
-			_, err := redis.GetSeeksterToken(context.Background(), ssoid)
-			if err != nil {
-				resp, err := handlers.SignInSeeksterAuto(handlers.NewSeeksterClient(), c, redis, db)
+/*
+	func AuthSeekster(client external.SeeksterAPI, redis database.RedisClientInterface, db *gorm.DB) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			if ssoidValue, exists := c.Get("ssoid"); exists {
+				ssoid, ok := ssoidValue.(string)
+				if !ok {
+					c.Error(errors.ErrValidationInputSSOID)
+					c.Abort()
+					return
+				}
+				_, err := redis.GetSeeksterToken(context.Background(), ssoid)
 				if err != nil {
-					if resp != nil {
-						resultMap, err := handlers.ResponseBodyToStruct(resp)
-						if err != nil {
-							c.JSON(errors.ErrParseJSON.Status, errors.ErrParseJSON)
+					resp, err := handlers.SignInSeeksterAuto(handlers.NewSeeksterClient(), c, redis, db)
+					if err != nil {
+						if resp != nil {
+							resultMap, err := handlers.ResponseBodyToStruct(resp)
+							if err != nil {
+								c.Error(errors.ErrParseJSON)
+								c.Abort()
+								return
+							}
+							c.Error(errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap))
+							c.Abort()
+							return
+						} else {
+							c.Error(errors.ErrInternalServer)
 							c.Abort()
 							return
 						}
-						c.JSON(resp.StatusCode(), resultMap)
-						c.Abort()
-						return
-					} else {
-						c.JSON(errors.ErrInternalServer.Status, errors.ErrInternalServer)
-						c.Abort()
-						return
-					}
 
+					}
 				}
 			}
+
+			c.Next()
 		}
-
-		c.Next()
 	}
-}
-
+*/
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")

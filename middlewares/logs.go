@@ -18,6 +18,7 @@ func Logs() gin.HandlerFunc {
 		if raw != "" {
 			path = path + "?" + raw
 		}
+		ssoid, _ := c.Get("ssoid")
 
 		// ข้อมูลที่จะ log
 		logrus.WithFields(logrus.Fields{
@@ -27,6 +28,7 @@ func Logs() gin.HandlerFunc {
 			"ip":         c.ClientIP(),
 			"user-agent": c.Request.UserAgent(),
 			"errors":     c.Errors.String(),
+			"ssoid":      ssoid,
 		}).Info("request completed")
 
 		c.Next()

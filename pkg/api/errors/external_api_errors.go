@@ -1,6 +1,8 @@
 package errors
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -25,7 +27,11 @@ func NewExternalAPIError(status int, code, message, detail string, ErrorResponse
 }
 
 func (e *ExternalAPIError) Error() string {
-	return e.Code
+	jsonStr, err := json.Marshal(e.ErrorResponse)
+	if err != nil {
+		return e.Code
+	}
+	return fmt.Sprintf("%s %s", e.Code, string(jsonStr))
 }
 
 // DefaultExternalAPIError is a default external API error

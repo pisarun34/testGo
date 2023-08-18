@@ -34,8 +34,8 @@ func setupSeeksterRoutes(baseGroup *gin.RouterGroup, redis database.RedisClientI
 	seeksterGroup.POST("/insertuser", func(c *gin.Context) {
 		handlers.InsertSeeksterUser(seeksterClientInstance, c, db)
 	})
-
-	seeksterGroup.Use(middlewares.AuthSeekster(seeksterClientInstance, redis, db))
+	//middlewares.AuthSeekster(seeksterClientInstance, redis, db)
+	seeksterGroup.Use()
 	{
 		// Protected routes
 		seeksterGroup.GET("/services", func(c *gin.Context) {

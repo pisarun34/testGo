@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"TESTGO/middlewares"
+	"TESTGO/pkg/api/errors"
 	"TESTGO/pkg/database"
 	"TESTGO/pkg/database/models"
 	"TESTGO/pkg/database/mysql"
@@ -8,7 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -391,6 +393,10 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/seekster/signin", nil)
+
+	r := gin.New()                    // create a new gin engine
+	r.Use(middlewares.ErrorHandler()) // apply the ErrorHandler middleware
+
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Set("ssoid", "22030729")
@@ -429,13 +435,24 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 
 	errMsg := fmt.Sprintf("API request failed: %s - %s", resp.Status(), resp.String())
 
-	mockClient.On("SignInByPhone", mock.AnythingOfType("mysql.User")).Return(nil, resp, errors.New(errMsg))
+	mockClient.On("SignInByPhone", mock.AnythingOfType("models.User")).Return(nil, resp, stderrors.New(errMsg))
 	mockRedis := NewMockRedisClient()
 
 	SeeksterSignin(mockClient, c, mockRedis, db)
 
+	resultMap := map[string]interface{}{
+		"error":   "invalid_credentials",
+		"message": nil,
+		"details": nil,
+	}
+	if len(c.Errors) > 0 {
+		assert.Equal(t, c.Errors[0].Err.Error(), errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap).Error())
+	} else {
+		t.Errorf("Expected an error to be set in context")
+	}
+
 	expectedStatusCode := http.StatusBadRequest
 	assert.Equal(t, expectedStatusCode, w.Code)
-	assert.Equal(t, string("{\"details\":null,\"error\":\"invalid_credentials\",\"message\":null}"), w.Body.String())
+	//assert.Equal(t, string("{\"details\":null,\"error\":\"invalid_credentials\",\"message\":null}"), w.Body.String())
 
 }
