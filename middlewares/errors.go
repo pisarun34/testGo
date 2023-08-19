@@ -32,6 +32,5 @@ func ErrorHandler() gin.HandlerFunc {
 				"message": "Internal Server Error",
 			})
 		}
-		c.Next()
 	}
 }

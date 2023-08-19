@@ -78,6 +78,21 @@ func ResettableByteReader(data []byte) *bytes.Reader {
 	return bytes.NewReader(data)
 }
 
+func prepareContext(c *gin.Context) {
+	// Here you can set values on c based on your mock context
+	c.Set("ssoid", "22030729")
+}
+
+func createErrorCollectorMiddleware(errors *[]error) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next() // Process request
+		if len(c.Errors) > 0 {
+			// เพิ่ม error จาก context นี้ไปยัง slice ของเรา
+			*errors = append(*errors, c.Errors[0].Err)
+		}
+	}
+}
+
 // TestSeeksterSignIn_Success_RedisHaveToken is a function that test SeeksterSignin function with redis have token
 func TestSeeksterSignIn_Success_RedisHaveToken(t *testing.T) {
 
@@ -437,16 +452,23 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 
 	mockClient.On("SignInByPhone", mock.AnythingOfType("models.User")).Return(nil, resp, stderrors.New(errMsg))
 	mockRedis := NewMockRedisClient()
+	var collectedErrors []error
+	r.Use(createErrorCollectorMiddleware(&collectedErrors))
+	r.POST("/seekster/signin", func(c *gin.Context) {
+		prepareContext(c)
+		SeeksterSignin(mockClient, c, mockRedis, db)
+	})
 
-	SeeksterSignin(mockClient, c, mockRedis, db)
+	//SeeksterSignin(mockClient, c, mockRedis, db)
+	r.ServeHTTP(w, req)
 
 	resultMap := map[string]interface{}{
 		"error":   "invalid_credentials",
 		"message": nil,
 		"details": nil,
 	}
-	if len(c.Errors) > 0 {
-		assert.Equal(t, c.Errors[0].Err.Error(), errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap).Error())
+	if len(collectedErrors) > 0 {
+		assert.Equal(t, errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap).Error(), collectedErrors[0].Error())
 	} else {
 		t.Errorf("Expected an error to be set in context")
 	}

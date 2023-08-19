@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"TESTGO/pkg/api/errors"
 	"TESTGO/pkg/external/trueid_jwk"
 	"crypto/rsa"
 	"encoding/base64"
@@ -147,4 +148,15 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func CheckAndExtractSSOID(c *gin.Context) (string, error) {
+	if ssoidValue, exists := c.Get("ssoid"); exists {
+		ssoid, ok := ssoidValue.(string)
+		if !ok {
+			return "", errors.ErrValidationInputSSOID
+		}
+		return ssoid, nil
+	}
+	return "", errors.ErrExtractJWTTrueID
 }

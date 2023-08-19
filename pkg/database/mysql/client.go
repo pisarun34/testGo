@@ -1,13 +1,54 @@
 package mysql
 
 import (
+	"TESTGO/config"
+	"TESTGO/pkg/api/errors"
+	"TESTGO/pkg/api/requests"
 	"TESTGO/pkg/database/models"
 	"TESTGO/pkg/entities"
-	"errors"
+	"TESTGO/pkg/utils"
+	stderrors "errors"
 	"fmt"
 
 	"gorm.io/gorm"
 )
+
+func GetSeeksterUserBySSOID(ssoid string, db *gorm.DB) (*models.User, error) {
+	var seeksterUser models.User
+	// get seekster user from db
+	if err := db.Where("SSOID = ?", ssoid).
+		Preload("SeeksterUser").
+		First(&seeksterUser).Error; err != nil {
+		return nil, errors.ErrDatabase
+	}
+	return &seeksterUser, nil
+}
+
+func CreateAndInsertSeeksterUser(ssoid string, input *requests.SignUpInput, db *gorm.DB) (*models.User, error) {
+	// create seekster user input
+	user := entities.InsertSeeksterUserInput{
+		SSOID:       ssoid,
+		PhoneNumber: input.PhoneNumber,
+		Password:    utils.GenerateRandomPassword(15),
+		UUID:        utils.GenerateUUIDv4(),
+	}
+	// Validate input
+	if err := config.Validate.Struct(&user); err != nil {
+		return nil, errors.ErrValidationModel
+	}
+	// Insert DB SeeksterUser and User if exist return error
+	newUser, err := InsertSeeksterUser(db, user)
+	if err != nil {
+		// if error is not SeeksterUser already exists return error
+		if err.Error() == "SeeksterUser already exists" {
+			return nil, errors.ErrSeeksterUserExist
+		} else {
+			return nil, errors.ErrInternalServer
+		}
+
+	}
+	return newUser, nil
+}
 
 func InsertSeeksterUser(db *gorm.DB, input entities.InsertSeeksterUserInput) (*models.User, error) {
 	var user models.User
@@ -69,7 +110,7 @@ func InsertSeeksterUser(db *gorm.DB, input entities.InsertSeeksterUserInput) (*m
 				return nil, err
 			}
 		} else {
-			return nil, errors.New("SeeksterUser already exists")
+			return nil, stderrors.New("SeeksterUser already exists")
 		}
 	}
 }
