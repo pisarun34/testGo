@@ -1,4 +1,4 @@
-package handlers
+package utils
 
 import (
 	ut "github.com/go-playground/universal-translator"

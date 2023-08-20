@@ -5,7 +5,7 @@ import (
 )
 
 // Subscribers สร้าง struct สำหรับเก็บข้อมูล subscription ของ TrueID
-type Subscribers struct {
+type SubscribersResponse struct {
 	Code            int    `json:"code"`
 	Message         string `json:"message"`
 	PlatformModule  int    `json:"platform_module"`

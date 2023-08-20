@@ -16,5 +16,5 @@ type SeeksterAPI interface {
 
 // TrueIDSubscripberAPI สร้าง interface สำหรับเรียกใช้งาน TrueID API
 type TrueIDSubscripberAPI interface {
-	GetSubscribers(ssoid string) (*trueidpartner.Subscribers, *resty.Response, error)
+	GetSubscribers(ssoid string) (*trueidpartner.SubscribersResponse, *resty.Response, error)
 }
