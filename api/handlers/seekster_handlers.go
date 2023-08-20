@@ -79,29 +79,32 @@ func bindAndValidateInput(c *gin.Context, obj interface{}) error {
 	return nil
 }
 
-type APICallFunc func(client external.SeeksterAPI, user *models.User) (interface{}, *resty.Response, error)
-
-func callSeeksterAPI(apiCall APICallFunc, client external.SeeksterAPI, newUser *models.User, ssoid string, c *gin.Context, redis database.RedisClientInterface) (interface{}, error) {
-	seeksterStruct, resp, err := apiCall(client, newUser)
+func handleAPIError(resp *resty.Response, err error) error {
 	if err != nil {
 		// convert response body to map[string]interface{}
 		resultMap, err := ResponseBodyToStruct(resp)
 		if err != nil {
-			return nil, errors.ErrParseJSON
+			return errors.ErrParseJSON
 		}
-		return nil, errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap)
+		return errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap)
 	}
-	return seeksterStruct, nil
+	return nil
 }
 
-func signUpAPICall(client external.SeeksterAPI, user *models.User) (interface{}, *resty.Response, error) {
+func signUpAPICall(client external.SeeksterAPI, user *models.User) (*seekster.SignUpResponse, error) {
 	signUpUser, resp, err := client.SignUp(*user)
-	return signUpUser, resp, err
+	if errHandle := handleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return signUpUser, nil
 }
 
-func signInAPICall(client external.SeeksterAPI, user *models.User) (interface{}, *resty.Response, error) {
+func signInAPICall(client external.SeeksterAPI, user *models.User) (*seekster.SignResponse, error) {
 	signInUser, resp, err := client.SignInByPhone(*user)
-	return signInUser, resp, err
+	if errHandle := handleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return signInUser, err
 }
 
 func AuthSeekster(client external.SeeksterAPI, redis database.RedisClientInterface, db *gorm.DB) gin.HandlerFunc {
@@ -124,19 +127,14 @@ func AuthSeekster(client external.SeeksterAPI, redis database.RedisClientInterfa
 			c.Error(err)
 			return
 		}
-		signInUser, err := callSeeksterAPI(signInAPICall, client, seeksterUser, ssoid, c, redis)
+		signInUser, err := signInAPICall(client, seeksterUser)
 		if err != nil {
 			c.Error(err)
 			return
 		}
-		signUpUserMap, ok := signInUser.(seekster.SignResponse)
-		if !ok {
-			c.Error(errors.ErrParseJSON)
-			return
-		}
 		ctx2, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
-		err = redis.SetSeeksterToken(ctx2, ssoid, signUpUserMap.AccessToken)
+		err = redis.SetSeeksterToken(ctx2, ssoid, signInUser.AccessToken)
 		if err != nil {
 			// ทำการ handle error
 			c.Error(errors.ErrRedis)
@@ -168,21 +166,16 @@ func SeeksterSignin(client external.SeeksterAPI, c *gin.Context, redis database.
 				return
 			}
 			// call seekster SignIn api
-			signInUser, err := callSeeksterAPI(signInAPICall, client, seeksterUser, ssoid, c, redis)
+			signInUser, err := signInAPICall(client, seeksterUser)
 			if err != nil {
 				c.Error(err)
-				return
-			}
-			signUpUserMap, ok := signInUser.(seekster.SignResponse)
-			if !ok {
-				c.Error(errors.ErrParseJSON)
 				return
 			}
 
 			// set seekster token to redis
 			ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 			defer cancel()
-			err = redis.SetSeeksterToken(ctx, ssoid, signUpUserMap.AccessToken)
+			err = redis.SetSeeksterToken(ctx, ssoid, signInUser.AccessToken)
 			if err != nil {
 				// ทำการ handle error
 				c.Error(errors.ErrRedis)
@@ -225,27 +218,22 @@ func SeeksterSignup(client external.SeeksterAPI, c *gin.Context, redis database.
 		return
 	}
 	// call seekster SignUp api
-	signUpUser, err := callSeeksterAPI(signUpAPICall, client, newUser, ssoid, c, redis)
+	signUpUser, err := signUpAPICall(client, newUser)
 	if err != nil {
 		c.Error(err)
-		return
-	}
-	signUpUserMap, ok := signUpUser.(seekster.SignUpResponse)
-	if !ok {
-		c.Error(errors.ErrParseJSON)
 		return
 	}
 	// return SignUpResponse
 	// set seekster token to redis
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	err = redis.SetSeeksterToken(ctx, ssoid, signUpUserMap.AccessToken)
+	err = redis.SetSeeksterToken(ctx, ssoid, signUpUser.AccessToken)
 	if err != nil {
 		// ทำการ handle error
 		c.Error(errors.ErrRedis)
 		return
 	}
-	c.JSON(200, signUpUserMap)
+	c.JSON(200, signUpUser)
 
 }
 

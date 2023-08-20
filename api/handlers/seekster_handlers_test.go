@@ -83,6 +83,11 @@ func prepareContext(c *gin.Context) {
 	c.Set("ssoid", "22030729")
 }
 
+func prepareContextWithNotinDb(c *gin.Context) {
+	// Here you can set values on c based on your mock context
+	c.Set("ssoid", "22030730")
+}
+
 func createErrorCollectorMiddleware(errors *[]error) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next() // Process request
@@ -95,26 +100,43 @@ func createErrorCollectorMiddleware(errors *[]error) gin.HandlerFunc {
 
 // TestSeeksterSignIn_Success_RedisHaveToken is a function that test SeeksterSignin function with redis have token
 func TestSeeksterSignIn_Success_RedisHaveToken(t *testing.T) {
-
+	godotenv.Load("../../.env")
 	gin.SetMode(gin.TestMode)
 	// Create a response recorder so you can inspect the response
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/seekster/signin", nil)
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
+	//c, _ := gin.CreateTestContext(w)
+	//c.Request = req
 	// Set ssoid in context
-	c.Set("ssoid", "22030729")
+	//c.Set("ssoid", "22030729")
 	mockClient := new(MockSeeksterAPI)
+	db := mysql.Initialize()
 	// Mock Seekster API response and error
 	//mockClient.On("SignInByPhone", mock.AnythingOfType("mysql.User")).Return(nil, nil, errors.New("Mock error"))
 	mockRedis := NewMockRedisClient()
 	mockRedis.SetSeeksterToken(context.Background(), "22030729", "mock_token")
 
-	SeeksterSignin(mockClient, c, mockRedis, nil)
+	var collectedErrors []error
+	r := gin.New() // create a new gin engine
+	r.Use(middlewares.ErrorHandler())
+
+	r.Use(createErrorCollectorMiddleware(&collectedErrors))
+	r.POST("/seekster/signin", func(c *gin.Context) {
+		prepareContext(c)
+		SeeksterSignin(mockClient, c, mockRedis, db)
+	})
+
+	//SeeksterSignin(mockClient, c, mockRedis, db)
+	r.ServeHTTP(w, req)
 
 	expectedStatusCode := http.StatusOK
+	expectedBody := string("{\"code\":10001,\"message\":\"Success\"}")
+	if expectedStatusCode == w.Code && expectedBody == w.Body.String() {
+		t.Logf("Test passed for case with status code: %d and body: %s", w.Code, w.Body.String())
+	}
+
 	assert.Equal(t, expectedStatusCode, w.Code)
-	assert.Equal(t, string("{\"code\":10001,\"message\":\"Success\"}"), w.Body.String())
+	assert.Equal(t, expectedBody, w.Body.String())
 }
 
 func TestSeeksterSignIn_Success_RedisNoToken(t *testing.T) {
@@ -123,9 +145,9 @@ func TestSeeksterSignIn_Success_RedisNoToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/seekster/signin", nil)
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
-	c.Set("ssoid", "22030729")
+	//c, _ := gin.CreateTestContext(w)
+	//c.Request = req
+	//c.Set("ssoid", "22030729")
 	mockClient := new(MockSeeksterAPI)
 	db := mysql.Initialize()
 
@@ -246,14 +268,30 @@ func TestSeeksterSignIn_Success_RedisNoToken(t *testing.T) {
 		},
 	}
 
-	mockClient.On("SignInByPhone", mock.AnythingOfType("mysql.User")).Return(signInResponse, resp, nil)
+	mockClient.On("SignInByPhone", mock.AnythingOfType("models.User")).Return(signInResponse, resp, nil)
 	mockRedis := NewMockRedisClient()
 
-	SeeksterSignin(mockClient, c, mockRedis, db) // ใช้ nil สำหรับ db ในตัวอย่าง
+	var collectedErrors []error
+	r := gin.New() // create a new gin engine
+	r.Use(middlewares.ErrorHandler())
 
-	expectedStatusCode := http.StatusOK // กำหนดค่า expectedStatusCode ที่คาดหวัง
+	r.Use(createErrorCollectorMiddleware(&collectedErrors))
+	r.POST("/seekster/signin", func(c *gin.Context) {
+		prepareContext(c)
+		SeeksterSignin(mockClient, c, mockRedis, db)
+	})
+
+	//SeeksterSignin(mockClient, c, mockRedis, db)
+	r.ServeHTTP(w, req)
+
+	expectedStatusCode := http.StatusOK
+	expectedBody := string("{\"code\":10001,\"message\":\"Success\"}")
+	if expectedStatusCode == w.Code && expectedBody == w.Body.String() {
+		t.Logf("Test passed for case with status code: %d and body: %s", w.Code, w.Body.String())
+	}
+	t.Logf("SeeksterSignin was called with client: %v", mockClient)
 	assert.Equal(t, expectedStatusCode, w.Code)
-	assert.Equal(t, string("{\"code\":10001,\"message\":\"Success\"}"), w.Body.String())
+	assert.Equal(t, expectedBody, w.Body.String())
 
 	mockClient.AssertExpectations(t) // ตรวจสอบว่ามีการเรียกฟังก์ชันที่ถูก mock ตามที่คาดหวัง
 }
@@ -264,9 +302,9 @@ func TestSeeksterSignIn_DbNotFoundUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/seekster/signin", nil)
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
-	c.Set("ssoid", "22030730")
+	//c, _ := gin.CreateTestContext(w)
+	//c.Request = req
+	//c.Set("ssoid", "22030730")
 	mockClient := new(MockSeeksterAPI)
 	db := mysql.Initialize()
 
@@ -392,10 +430,20 @@ func TestSeeksterSignIn_DbNotFoundUser(t *testing.T) {
 		},
 	}
 
-	mockClient.On("SignInByPhone", mock.AnythingOfType("mysql.User")).Return(signInResponse, resp, nil)
+	mockClient.On("SignInByPhone", mock.AnythingOfType("models.User")).Return(signInResponse, resp, nil)
 	mockRedis := NewMockRedisClient()
+	var collectedErrors []error
+	r := gin.New() // create a new gin engine
+	r.Use(middlewares.ErrorHandler())
 
-	SeeksterSignin(mockClient, c, mockRedis, db)
+	r.Use(createErrorCollectorMiddleware(&collectedErrors))
+	r.POST("/seekster/signin", func(c *gin.Context) {
+		prepareContextWithNotinDb(c)
+		SeeksterSignin(mockClient, c, mockRedis, db)
+	})
+
+	//SeeksterSignin(mockClient, c, mockRedis, db)
+	r.ServeHTTP(w, req)
 
 	expectedStatusCode := http.StatusInternalServerError
 	assert.Equal(t, expectedStatusCode, w.Code)
@@ -412,9 +460,9 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 	r := gin.New()                    // create a new gin engine
 	r.Use(middlewares.ErrorHandler()) // apply the ErrorHandler middleware
 
-	c, _ := gin.CreateTestContext(w)
-	c.Request = req
-	c.Set("ssoid", "22030729")
+	//c, _ := gin.CreateTestContext(w)
+	//c.Request = req
+	//c.Set("ssoid", "22030729")
 	mockClient := new(MockSeeksterAPI)
 	db := mysql.Initialize()
 
@@ -475,6 +523,6 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 
 	expectedStatusCode := http.StatusBadRequest
 	assert.Equal(t, expectedStatusCode, w.Code)
-	//assert.Equal(t, string("{\"details\":null,\"error\":\"invalid_credentials\",\"message\":null}"), w.Body.String())
-
+	assert.Equal(t, string("{\"details\":null,\"error\":\"invalid_credentials\",\"message\":null}"), w.Body.String())
+	mockClient.AssertExpectations(t)
 }
