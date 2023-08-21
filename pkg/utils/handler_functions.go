@@ -4,6 +4,7 @@ import (
 	"TESTGO/config"
 	"TESTGO/pkg/api/errors"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -17,6 +18,7 @@ import (
 func ResponseBodyToStruct(resp *resty.Response) (interface{}, error) {
 	// response body to map[string]interface{} for map erro response body to struct
 	var resultMap map[string]interface{}
+	fmt.Println(resp.String())
 	bodyBytes := resp.String()
 	// if response body is empty read body from resp.RawResponse.Body (Mock Seekster API)
 	if resp.String() == "" {
@@ -53,12 +55,16 @@ func BindAndValidateInput(c *gin.Context, obj interface{}) error {
 
 func HandleAPIError(resp *resty.Response, err error) error {
 	if err != nil {
-		// convert response body to map[string]interface{}
-		resultMap, err := ResponseBodyToStruct(resp)
-		if err != nil {
-			return errors.ErrParseJSON
+		if resp != nil {
+			// convert response body to map[string]interface{}
+			resultMap, err := ResponseBodyToStruct(resp)
+			if err != nil {
+				return errors.ErrParseJSON
+			}
+			return errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap)
+		} else {
+			return err
 		}
-		return errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap)
 	}
 	return nil
 }

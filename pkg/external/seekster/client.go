@@ -1,11 +1,14 @@
 package seekster
 
 import (
+	"TESTGO/middlewares"
 	"TESTGO/pkg/database/models"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -158,4 +161,41 @@ func (c *Client) SignUp(seeksterUser models.User) (*SignUpResponse, *resty.Respo
 	}
 
 	return &user, nil, nil
+}
+
+func (c *Client) GetServiceList(g *gin.Context) (*GetServiceListResponse, *resty.Response, error) {
+	token, err := middlewares.CheckAndExtractSeeksterToken(g)
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Println("token", token)
+	params := url.Values{}
+	queryParameters := g.Request.URL.Query()
+	for key, value := range queryParameters {
+		params.Add(key, value[0])
+	}
+	baseURL := fmt.Sprintf("%s/services?%s", c.BaseURL, params.Encode())
+	fmt.Println("baseURL", baseURL)
+	client := resty.New()
+
+	// ตั้งค่า Headers ที่จะใช้ทั่วโปรแกรม
+
+	client.SetHeader("Content-Type", "application/json")
+	client.SetHeader("Authorization", "Bearer "+token)
+
+	var service GetServiceListResponse
+	// ทำ POST request โดยส่ง Headers และ Body
+	resp, err := client.R().
+		SetResult(&service).
+		Get(baseURL)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	if resp.IsError() {
+		errMsg := fmt.Sprintf("API request failed: %s - %s", resp.Status(), resp.String())
+		return nil, resp, errors.New(errMsg)
+	}
+
+	return &service, resp, nil
 }

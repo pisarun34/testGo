@@ -50,6 +50,11 @@ func (m *MockSeeksterAPI) SignUp(user models.User) (*seekster.SignUpResponse, *r
 	return args.Get(0).(*seekster.SignUpResponse), args.Get(1).(*resty.Response), args.Error(2)
 }
 
+func (m *MockSeeksterAPI) GetServiceList(c *gin.Context) (*seekster.GetServiceListResponse, *resty.Response, error) {
+	args := m.Called(c)
+	return args.Get(0).(*seekster.GetServiceListResponse), args.Get(1).(*resty.Response), args.Error(2)
+}
+
 // NewMockRedisClient is a function that return MockRedisClient
 func NewMockRedisClient() database.RedisClientInterface {
 	return &MockRedisClient{data: make(map[string]string)}
@@ -503,6 +508,82 @@ func TestSeeksterSignIn_Response_failed(t *testing.T) {
 	var collectedErrors []error
 	r.Use(createErrorCollectorMiddleware(&collectedErrors))
 	r.POST("/seekster/signin", func(c *gin.Context) {
+		prepareContext(c)
+		SeeksterSignin(mockClient, c, mockRedis, db)
+	})
+
+	//SeeksterSignin(mockClient, c, mockRedis, db)
+	r.ServeHTTP(w, req)
+
+	resultMap := map[string]interface{}{
+		"error":   "invalid_credentials",
+		"message": nil,
+		"details": nil,
+	}
+	if len(collectedErrors) > 0 {
+		assert.Equal(t, errors.NewExternalAPIError(resp.StatusCode(), resp.Status(), "", "", resultMap).Error(), collectedErrors[0].Error())
+	} else {
+		t.Errorf("Expected an error to be set in context")
+	}
+
+	expectedStatusCode := http.StatusBadRequest
+	assert.Equal(t, expectedStatusCode, w.Code)
+	assert.Equal(t, string("{\"details\":null,\"error\":\"invalid_credentials\",\"message\":null}"), w.Body.String())
+	mockClient.AssertExpectations(t)
+}
+
+func TestGetService(t *testing.T) {
+	godotenv.Load("../../.env")
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/seekster/services", nil)
+
+	r := gin.New()                    // create a new gin engine
+	r.Use(middlewares.ErrorHandler()) // apply the ErrorHandler middleware
+
+	//c, _ := gin.CreateTestContext(w)
+	//c.Request = req
+	//c.Set("ssoid", "22030729")
+	mockClient := new(MockSeeksterAPI)
+	db := mysql.Initialize()
+
+	type ErrorResponse struct {
+		Error   string      `json:"error"`
+		Message interface{} `json:"message"`
+		Details interface{} `json:"details"`
+	}
+
+	signInResponse := ErrorResponse{
+		Error:   "invalid_credentials",
+		Message: nil,
+		Details: nil,
+	}
+
+	// Convert the signInResponse to a JSON byte slice
+	responseBody, err := json.Marshal(signInResponse)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reader := ResettableByteReader(responseBody)
+	reader.Seek(0, io.SeekStart)
+	resp := &resty.Response{
+		RawResponse: &http.Response{
+			StatusCode: 400,
+			Body:       io.NopCloser(reader), // mock the response body here
+			Header: http.Header{
+				"Content-Type": []string{"application/json; charset=utf-8"},
+			},
+		},
+	}
+
+	errMsg := fmt.Sprintf("API request failed: %s - %s", resp.Status(), resp.String())
+
+	mockClient.On("GetServiceList", mock.AnythingOfType("models.User")).Return(nil, resp, stderrors.New(errMsg))
+	mockRedis := NewMockRedisClient()
+	var collectedErrors []error
+	r.Use(createErrorCollectorMiddleware(&collectedErrors))
+	r.POST("/seekster/services", func(c *gin.Context) {
 		prepareContext(c)
 		SeeksterSignin(mockClient, c, mockRedis, db)
 	})

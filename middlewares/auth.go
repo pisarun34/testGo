@@ -160,3 +160,14 @@ func CheckAndExtractSSOID(c *gin.Context) (string, error) {
 	}
 	return "", errors.ErrExtractJWTTrueID
 }
+
+func CheckAndExtractSeeksterToken(c *gin.Context) (string, error) {
+	if ssoidValue, exists := c.Get("seeksterToken"); exists {
+		ssoid, ok := ssoidValue.(string)
+		if !ok {
+			return "", errors.ErrValidationInputSSOID
+		}
+		return ssoid, nil
+	}
+	return "", errors.ErrExtractJWTTrueID
+}
