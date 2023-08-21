@@ -55,6 +55,26 @@ func (m *MockSeeksterAPI) GetServiceList(c *gin.Context) (*seekster.GetServiceLi
 	return args.Get(0).(*seekster.GetServiceListResponse), args.Get(1).(*resty.Response), args.Error(2)
 }
 
+func (m *MockSeeksterAPI) GetServiceDetails(c *gin.Context) (*seekster.GetServiceDetailsResponse, *resty.Response, error) {
+	args := m.Called(c)
+	return args.Get(0).(*seekster.GetServiceDetailsResponse), args.Get(1).(*resty.Response), args.Error(2)
+}
+
+func (m *MockSeeksterAPI) GetSlotsQuantity(c *gin.Context) (*seekster.GetSlotsQuantityResponse, *resty.Response, error) {
+	args := m.Called(c)
+	return args.Get(0).(*seekster.GetSlotsQuantityResponse), args.Get(1).(*resty.Response), args.Error(2)
+}
+
+func (m *MockSeeksterAPI) BookingServiceBySlot(c *gin.Context, RequestBody *seekster.BookingServiceBySlotRequest) (*seekster.BookingServiceBySlotResponse, *resty.Response, error) {
+	args := m.Called(c)
+	return args.Get(0).(*seekster.BookingServiceBySlotResponse), args.Get(1).(*resty.Response), args.Error(2)
+}
+
+func (m *MockSeeksterAPI) GetInquiryList(c *gin.Context) (*seekster.GetInquiryListResponse, *resty.Response, error) {
+	args := m.Called(c)
+	return args.Get(0).(*seekster.GetInquiryListResponse), args.Get(1).(*resty.Response), args.Error(2)
+}
+
 // NewMockRedisClient is a function that return MockRedisClient
 func NewMockRedisClient() database.RedisClientInterface {
 	return &MockRedisClient{data: make(map[string]string)}

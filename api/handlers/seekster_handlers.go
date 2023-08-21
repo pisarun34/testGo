@@ -59,6 +59,42 @@ func GetServiceListAPICall(client external.SeeksterAPI, c *gin.Context) (*seekst
 	return services, err
 }
 
+func GetServiceDetailsAPICall(client external.SeeksterAPI, c *gin.Context) (*seekster.GetServiceDetailsResponse, error) {
+	services, resp, err := client.GetServiceDetails(c)
+	if errHandle := utils.HandleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return services, err
+}
+
+func GetSlotsQuantity(client external.SeeksterAPI, c *gin.Context) (*seekster.GetSlotsQuantityResponse, error) {
+	slots, resp, err := client.GetSlotsQuantity(c)
+	if errHandle := utils.HandleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return slots, err
+}
+
+func BookingServiceBySlot(client external.SeeksterAPI, c *gin.Context) (*seekster.BookingServiceBySlotResponse, error) {
+	var input seekster.BookingServiceBySlotRequest
+	if err := utils.BindAndValidateInput(c, &input); err != nil {
+		return nil, err
+	}
+	service, resp, err := client.BookingServiceBySlot(c, &input)
+	if errHandle := utils.HandleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return service, err
+}
+
+func GetInquiryList(client external.SeeksterAPI, c *gin.Context) (*seekster.GetInquiryListResponse, error) {
+	inquiry, resp, err := client.GetInquiryList(c)
+	if errHandle := utils.HandleAPIError(resp, err); errHandle != nil {
+		return nil, errHandle
+	}
+	return inquiry, err
+}
+
 func AuthSeekster(client external.SeeksterAPI, redis database.RedisClientInterface, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ssoid, err := middlewares.CheckAndExtractSSOID(c)
@@ -206,4 +242,45 @@ func GetServiceList(client external.SeeksterAPI, c *gin.Context, redis database.
 		return
 	}
 	c.JSON(http.StatusOK, services)
+}
+
+func SeeksterGetServiceDetails(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
+	services, err := GetServiceDetailsAPICall(client, c)
+	if err != nil {
+		fmt.Println(err)
+		c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, services)
+}
+
+func SeeksterGetSlotsQuantity(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
+	services, err := GetSlotsQuantity(client, c)
+	if err != nil {
+		fmt.Println(err)
+		c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, services)
+}
+
+func SeeksterBookingServiceBySlot(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
+
+	services, err := BookingServiceBySlot(client, c)
+	if err != nil {
+		fmt.Println(err)
+		c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, services)
+}
+
+func SeeksterGetInquiryList(client external.SeeksterAPI, c *gin.Context, redis database.RedisClientInterface, db *gorm.DB) {
+	inquiry, err := GetInquiryList(client, c)
+	if err != nil {
+		fmt.Println(err)
+		c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, inquiry)
 }

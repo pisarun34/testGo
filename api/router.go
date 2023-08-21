@@ -41,6 +41,18 @@ func setupSeeksterRoutes(baseGroup *gin.RouterGroup, redis database.RedisClientI
 		seeksterGroup.GET("/services", func(c *gin.Context) {
 			handlers.GetServiceList(seeksterClientInstance, c, redis, db)
 		})
+		seeksterGroup.GET("/services/:id", func(c *gin.Context) {
+			handlers.SeeksterGetServiceDetails(seeksterClientInstance, c, redis, db)
+		})
+		seeksterGroup.GET("/services/:id/slots", func(c *gin.Context) {
+			handlers.SeeksterGetSlotsQuantity(seeksterClientInstance, c, redis, db)
+		})
+		seeksterGroup.POST("/inquiries", func(c *gin.Context) {
+			handlers.SeeksterBookingServiceBySlot(seeksterClientInstance, c, redis, db)
+		})
+		seeksterGroup.GET("/inquiries", func(c *gin.Context) {
+			handlers.SeeksterGetInquiryList(seeksterClientInstance, c, redis, db)
+		})
 	}
 }
 
